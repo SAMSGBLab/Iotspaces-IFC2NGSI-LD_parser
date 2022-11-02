@@ -22,7 +22,7 @@ schema = ifcopenshell.ifcopenshell_wrapper.schema_by_name("IFC2X3")
 
 #Some global settings here
 selector = Selector()
-context = {"@context":["https://gitlab.isl.ics.forth.gr/api/v4/projects/82/repository/files/ngsild-models%2FBuilding%2Fcontext.json/raw","https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"]}
+context = {"@context":["https://raw.githubusercontent.com/SAMSGBLab/iotspaces-DataModels/main/Building/context.json","https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"]}
 settings = ifcopenshell.geom.settings()
 settings.set(settings.USE_WORLD_COORDS, True)
 #settings_2d = ifcopenshell.geom.settings()
