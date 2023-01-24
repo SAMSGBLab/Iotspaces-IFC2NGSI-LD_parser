@@ -7,6 +7,7 @@ import ifcopenshell.util
 import ifcopenshell.util.element
 import json
 import getopt
+
 from ifcopenshell.util.selector import Selector
 import ifcopenshell.geom
 import shapely.geometry as shape_geo
@@ -15,6 +16,7 @@ import sys
 import ifcopenshell.util.placement
 import ifcopenshell.util.element
 import trimesh
+import difflib
 
 
 schema = ifcopenshell.ifcopenshell_wrapper.schema_by_name("IFC2X3")
@@ -22,7 +24,7 @@ schema = ifcopenshell.ifcopenshell_wrapper.schema_by_name("IFC2X3")
 
 #Some global settings here
 selector = Selector()
-context = {"@context":["https://raw.githubusercontent.com/SAMSGBLab/iotspaces-DataModels/main/Building/context.json","https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"]}
+context = {"@context":["https://gitlab.isl.ics.forth.gr/api/v4/projects/82/repository/files/ngsild-models%2FBuilding%2Fcontext.json/raw","https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"]}
 settings = ifcopenshell.geom.settings()
 settings.set(settings.USE_WORLD_COORDS, True)
 #settings_2d = ifcopenshell.geom.settings()
@@ -455,38 +457,54 @@ def main(argv):
 
         #if already found stairs of the floor the area is in
         #need to find a better way to calculate this
-        try:
-            trimeshes_of_stairs= stairs_of_floor[room.Decomposes[0][4][0]]
-            stairs_ids= stairs_of_floor_id[room.Decomposes[0][4][0]]
-            count=0
-            for stair_mesh in trimeshes_of_stairs:
-                touching=trimesh.boolean.intersection([trimesh_of_room,stair_mesh],"blender")
-                #print(touching)
-                #print("locally cached")
-                if (touching.is_empty == False):
-                    print("Stairs found")
-                    stairs_of_room.append("urn:ngsi-ld:Stair:Test:SmartCitiesdomain:SmartBuildings:"+ stairs_ids[count])
-                count=count+1    
-        except:
+        temporary_bypass=0
+        if(temporary_bypass!=1):
+            try:
+                trimeshes_of_stairs= stairs_of_floor[room.Decomposes[0][4][0]]
+                stairs_ids= stairs_of_floor_id[room.Decomposes[0][4][0]]
+                count=0
+                for stair_mesh in trimeshes_of_stairs:
+                    touching=trimesh.boolean.intersection([trimesh_of_room,stair_mesh],"blender")
+                    #print(touching)
+                    #print("locally cached")
+                    if (touching.is_empty == False):
+                        print("Stairs found")
+                        stairs_of_room.append("urn:ngsi-ld:Stair:Test:SmartCitiesdomain:SmartBuildings:"+ stairs_ids[count])
+                    count=count+1    
+            except:
+                #print(room.Decomposes[0][4][0])
+                stairs = selector.parse(ifc, '@ #'+ room.Decomposes[0][4][0]+ ' & .IfcStair ')   
+                once=1
+                for stair in stairs:
 
-            stairs = selector.parse(ifc, '@ #'+ room.Decomposes[0][4][0]+ ' & .IfcStair ')   
+                    #print(stair.ShapeType)
+                    #print(stair.IsDefinedBy)
+                    #print(ifc.traverse(stair, max_levels=1))
+                    #if stair in room then add to stairs
 
-            for stair in stairs:
-                #if stair in room then add to stairs
-                shape2=(ifcopenshell.geom.create_shape(settings, stair))    
-                verts2=shape2.geometry.verts
-                faces2=shape2.geometry.faces
-                grouped_verts2 = [[verts2[i], verts2[i + 1], verts2[i + 2]] for i in range(0, len(verts2), 3)]
-                grouped_faces2 = [[faces2[i], faces2[i + 1], faces2[i + 2]] for i in range(0, len(faces2), 3)] 
+                    if(stair.ShapeType=="NOTDEFINED"):
+                        
+                        stair_components = stair.IsDecomposedBy[0].RelatedObjects
 
-                trimesh_of_stair=trimesh.base.Trimesh(vertices=grouped_verts2,faces=grouped_faces2) 
-                stairs_of_floor.setdefault(room.Decomposes[0][4][0],[]).append(trimesh_of_stair)
-                stairs_of_floor_id.setdefault(room.Decomposes[0][4][0],[]).append(stair.GlobalId)
-                touching=trimesh.boolean.intersection([trimesh_of_room,trimesh_of_stair],"blender")
-                print(touching)
-                if (touching.is_empty == False):
-                    print("Stairs found")
-                    stairs_of_room.append("urn:ngsi-ld:Stair:Test:SmartCitiesdomain:SmartBuildings:"+ stair.GlobalId)
+                        for stair_element in stair_components:
+                            if 'IfcStairFlight' == stair_element.is_a():
+                                nothing_for_now=0
+
+                    else:    
+                        shape2=(ifcopenshell.geom.create_shape(settings, stair))    
+                        verts2=shape2.geometry.verts
+                        faces2=shape2.geometry.faces
+                        grouped_verts2 = [[verts2[i], verts2[i + 1], verts2[i + 2]] for i in range(0, len(verts2), 3)]
+                        grouped_faces2 = [[faces2[i], faces2[i + 1], faces2[i + 2]] for i in range(0, len(faces2), 3)] 
+
+                        trimesh_of_stair=trimesh.base.Trimesh(vertices=grouped_verts2,faces=grouped_faces2) 
+                        stairs_of_floor.setdefault(room.Decomposes[0][4][0],[]).append(trimesh_of_stair)
+                        stairs_of_floor_id.setdefault(room.Decomposes[0][4][0],[]).append(stair.GlobalId)
+                        touching=trimesh.boolean.intersection([trimesh_of_room,trimesh_of_stair],"blender")
+                        print(touching)
+                        if (touching.is_empty == False):
+                            print("Stairs found")
+                            stairs_of_room.append("urn:ngsi-ld:Stair:Test:SmartCitiesdomain:SmartBuildings:"+ stair.GlobalId)
 
        
         create_ngsi_ld_attribute(room_dictionary,"DoorsInRoom",doors_of_room,"Relationship") 
@@ -561,16 +579,51 @@ def main(argv):
     ############################################################################# Stairs Start#######################################################################
     Stair_dics=[]
     Stairs = ifc.by_type('IfcStair')
-
+    
+    print(Stairs)
     for Stair in Stairs:
         Stair_dictionary={"id":"urn:ngsi-ld:Stair:Test:SmartCitiesdomain:SmartBuildings:" + str(Stair.GlobalId),"type":"Stair"}
-        shape=(ifcopenshell.geom.create_shape(settings, Stair))    
-        verts=shape.geometry.verts
-        faces=shape.geometry.faces
-        grouped_verts = [[verts[i], verts[i + 1], verts[i + 2]] for i in range(0, len(verts), 3)]
-        grouped_faces = [[faces[i], faces[i + 1], faces[i + 2]] for i in range(0, len(faces), 3)]
-        create_ngsi_ld_attribute(Stair_dictionary,"relativePosition",{"type": "Trimesh","measurementUnit": "m",
-                "Dimensions": "3D","coordinates":grouped_verts,"faces":grouped_faces},"Property")
+
+        if(stair.ShapeType=="NOTDEFINED"):
+            stair_components = Stair.IsDecomposedBy[0].RelatedObjects
+            verts2=[]
+            faces2=[]
+            faces3=[]
+            maxi=0
+            for stair_element in stair_components:
+                if 'IfcStairFlight' == stair_element.is_a():
+                    shape2=(ifcopenshell.geom.create_shape(settings, stair_element))
+
+                    verts3=(shape2.geometry.verts)
+                    print(len(verts3))
+                    #previous_face_len=len(faces3)
+                    if faces3!=[]:
+                        maxi=max(faces3)
+
+                    faces3=(shape2.geometry.faces)
+                    faces3 = [x + maxi for x in faces3]
+                    print(faces3)
+                    verts2.extend(verts3)
+                    faces2.extend(faces3)
+                    
+                #print(verts2)
+                #print(Stair)
+                print(len(verts2))
+                
+            grouped_verts = ([[verts2[i], verts2[i + 1], verts2[i + 2]] for i in range(0, len(verts2), 3)])
+            grouped_faces = ([[faces2[i], faces2[i + 1], faces2[i + 2]] for i in range(0, len(faces2), 3)])
+            create_ngsi_ld_attribute(Stair_dictionary,"relativePosition",{"type": "Trimesh","measurementUnit": "m",
+                    "Dimensions": "3D","coordinates":grouped_verts,"faces":grouped_faces},"Property")    
+                                  
+        else:
+            shape=(ifcopenshell.geom.create_shape(settings, Stair))    
+            verts=shape.geometry.verts
+            faces=shape.geometry.faces
+            grouped_verts = [[verts[i], verts[i + 1], verts[i + 2]] for i in range(0, len(verts), 3)]
+            grouped_faces = [[faces[i], faces[i + 1], faces[i + 2]] for i in range(0, len(faces), 3)]
+        
+            create_ngsi_ld_attribute(Stair_dictionary,"relativePosition",{"type": "Trimesh","measurementUnit": "m",
+                    "Dimensions": "3D","coordinates":grouped_verts,"faces":grouped_faces},"Property")
 
         Stair_dictionary.update(context)
 
