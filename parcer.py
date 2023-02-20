@@ -16,6 +16,7 @@ import sys
 import ifcopenshell.util.placement
 import ifcopenshell.util.element
 import trimesh
+from scipy.spatial import ConvexHull
 import difflib
 
 
@@ -83,11 +84,12 @@ def usage():
 
 #MAIN STARTS HERE
 def main(argv):
-    test=FALSE
+    Dimension_2D= False
+    test=False
     filename=''
 
     try:
-        opts, args = getopt.getopt(argv,"f:h:t:",["file=","help=","test="])
+        opts, args = getopt.getopt(argv,"f:h:t:d:",["file=","help=","test=","2D="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -97,10 +99,13 @@ def main(argv):
             usage()
             sys.exit()
         elif opt in ("-f", "-file"):
+            print("I enter here?")
             filename = arg
         elif opt in ("-t", "-test"):
-            test=TRUE   
-             
+            test=True
+        elif opt in ("-d","-2D"):       
+            Dimension_2D= True
+    print(filename)        
     if filename == '':
        usage()
        sys.exit()
@@ -366,9 +371,32 @@ def main(argv):
         
 
         #TODO import measurement unit from ifc here
-        create_ngsi_ld_attribute(room_dictionary,"relativePosition",{"type": "Trimesh","measurementUnit": "m",
+        if(Dimension_2D==False):
+            create_ngsi_ld_attribute(room_dictionary,"relativePosition",{"type": "Trimesh","measurementUnit": "m",
                 "Dimensions": "3D","coordinates":grouped_verts,"faces":grouped_faces},"Property")
+        else:
+            verts_2d=[[verts[i], verts[i + 1]] for i in range(0, len(verts), 3)]
+            #print(verts_2d)
+            # Compute convex hull
+            hull = ConvexHull(verts_2d)
 
+            # Get vertices of convex hull
+            #print(hull.vertices)
+            hull_verts = [verts_2d[i] for i in hull.vertices]
+            #print(hull_verts)
+            # Get the number of vertices in the convex hull
+            num_vertices = len(hull.vertices)
+
+            # Set the type variable based on the number of vertices
+            if num_vertices == 1:
+                typedim = "Point"
+            elif num_vertices == 2:
+                typedim = "LineString"
+            else:
+                typedim = "Polygon"
+
+            create_ngsi_ld_attribute(room_dictionary,"relativePosition",{"type": typedim,"measurementUnit": "m",
+                "Dimensions": "2D","coordinates":hull_verts},"Property")
 
         num_of_doors=0
         num_of_windows=0
@@ -540,8 +568,33 @@ def main(argv):
         faces=shape.geometry.faces
         grouped_verts = [[verts[i], verts[i + 1], verts[i + 2]] for i in range(0, len(verts), 3)]
         grouped_faces = [[faces[i], faces[i + 1], faces[i + 2]] for i in range(0, len(faces), 3)]
-        create_ngsi_ld_attribute(door_dictionary,"relativePosition",{"type": "Trimesh","measurementUnit": "m",
+
+        if(Dimension_2D==False):
+            create_ngsi_ld_attribute(door_dictionary,"relativePosition",{"type": "Trimesh","measurementUnit": "m",
                 "Dimensions": "3D","coordinates":grouped_verts,"faces":grouped_faces},"Property")
+        else:
+            verts_2d=[[verts[i], verts[i + 1]] for i in range(0, len(verts), 3)]
+            #print(verts_2d)
+            # Compute convex hull
+            hull = ConvexHull(verts_2d)
+
+            # Get vertices of convex hull
+            #print(hull.vertices)
+            hull_verts = [verts_2d[i] for i in hull.vertices]
+            #print(hull_verts)
+            # Get the number of vertices in the convex hull
+            num_vertices = len(hull.vertices)
+
+            # Set the type variable based on the number of vertices
+            if num_vertices == 1:
+                typedim = "Point"
+            elif num_vertices == 2:
+                typedim = "LineString"
+            else:
+                typedim = "Polygon"
+
+            create_ngsi_ld_attribute(door_dictionary,"relativePosition",{"type": typedim,"measurementUnit": "m",
+                "Dimensions": "2D","coordinates":hull_verts},"Property")
 
         door_dictionary.update(context)
 
@@ -563,8 +616,36 @@ def main(argv):
         faces=shape.geometry.faces
         grouped_verts = [[verts[i], verts[i + 1], verts[i + 2]] for i in range(0, len(verts), 3)]
         grouped_faces = [[faces[i], faces[i + 1], faces[i + 2]] for i in range(0, len(faces), 3)]
-        create_ngsi_ld_attribute(Window_dictionary,"relativePosition",{"type": "Trimesh","measurementUnit": "m",
+
+        if(Dimension_2D==False):
+            create_ngsi_ld_attribute(Window_dictionary,"relativePosition",{"type": "Trimesh","measurementUnit": "m",
                 "Dimensions": "3D","coordinates":grouped_verts,"faces":grouped_faces},"Property")
+        else:
+            verts_2d=[[verts[i], verts[i + 1]] for i in range(0, len(verts), 3)]
+            #print(verts_2d)
+            # Compute convex hull
+            hull = ConvexHull(verts_2d)
+
+            # Get vertices of convex hull
+            #print(hull.vertices)
+            hull_verts = [verts_2d[i] for i in hull.vertices]
+            #print(hull_verts)
+            # Get the number of vertices in the convex hull
+            num_vertices = len(hull.vertices)
+
+            # Set the type variable based on the number of vertices
+            if num_vertices == 1:
+                typedim = "Point"
+            elif num_vertices == 2:
+                typedim = "LineString"
+            else:
+                typedim = "Polygon"
+
+            create_ngsi_ld_attribute(Window_dictionary,"relativePosition",{"type": typedim,"measurementUnit": "m",
+                "Dimensions": "2D","coordinates":hull_verts},"Property")
+
+
+    
 
         Window_dictionary.update(context)
 
@@ -612,8 +693,33 @@ def main(argv):
                 
             grouped_verts = ([[verts2[i], verts2[i + 1], verts2[i + 2]] for i in range(0, len(verts2), 3)])
             grouped_faces = ([[faces2[i], faces2[i + 1], faces2[i + 2]] for i in range(0, len(faces2), 3)])
-            create_ngsi_ld_attribute(Stair_dictionary,"relativePosition",{"type": "Trimesh","measurementUnit": "m",
-                    "Dimensions": "3D","coordinates":grouped_verts,"faces":grouped_faces},"Property")    
+
+            if(Dimension_2D==False):
+                create_ngsi_ld_attribute(Stair_dictionary,"relativePosition",{"type": "Trimesh","measurementUnit": "m",
+                "Dimensions": "3D","coordinates":grouped_verts,"faces":grouped_faces},"Property")
+            else:
+                verts_2d=[[verts[i], verts[i + 1]] for i in range(0, len(verts), 3)]
+                #print(verts_2d)
+                # Compute convex hull
+                hull = ConvexHull(verts_2d)
+
+                # Get vertices of convex hull
+                #print(hull.vertices)
+                hull_verts = [verts_2d[i] for i in hull.vertices]
+                #print(hull_verts)
+                # Get the number of vertices in the convex hull
+                num_vertices = len(hull.vertices)
+
+                # Set the type variable based on the number of vertices
+                if num_vertices == 1:
+                    typedim = "Point"
+                elif num_vertices == 2:
+                    typedim = "LineString"
+                else:
+                    typedim = "Polygon"
+
+                create_ngsi_ld_attribute(Stair_dictionary,"relativePosition",{"type": typedim,"measurementUnit": "m",
+                    "Dimensions": "2D","coordinates":hull_verts},"Property")
                                   
         else:
             shape=(ifcopenshell.geom.create_shape(settings, Stair))    
@@ -621,9 +727,33 @@ def main(argv):
             faces=shape.geometry.faces
             grouped_verts = [[verts[i], verts[i + 1], verts[i + 2]] for i in range(0, len(verts), 3)]
             grouped_faces = [[faces[i], faces[i + 1], faces[i + 2]] for i in range(0, len(faces), 3)]
-        
-            create_ngsi_ld_attribute(Stair_dictionary,"relativePosition",{"type": "Trimesh","measurementUnit": "m",
-                    "Dimensions": "3D","coordinates":grouped_verts,"faces":grouped_faces},"Property")
+           
+            if(Dimension_2D==False):
+                create_ngsi_ld_attribute(Stair_dictionary,"relativePosition",{"type": "Trimesh","measurementUnit": "m",
+                "Dimensions": "3D","coordinates":grouped_verts,"faces":grouped_faces},"Property")
+            else:
+                verts_2d=[[verts[i], verts[i + 1]] for i in range(0, len(verts), 3)]
+                #print(verts_2d)
+                # Compute convex hull
+                hull = ConvexHull(verts_2d)
+
+                # Get vertices of convex hull
+                #print(hull.vertices)
+                hull_verts = [verts_2d[i] for i in hull.vertices]
+                #print(hull_verts)
+                # Get the number of vertices in the convex hull
+                num_vertices = len(hull.vertices)
+
+                # Set the type variable based on the number of vertices
+                if num_vertices == 1:
+                    typedim = "Point"
+                elif num_vertices == 2:
+                    typedim = "LineString"
+                else:
+                    typedim = "Polygon"
+
+                create_ngsi_ld_attribute(Stair_dictionary,"relativePosition",{"type": typedim,"measurementUnit": "m",
+                    "Dimensions": "2D","coordinates":hull_verts},"Property")
 
         Stair_dictionary.update(context)
 
