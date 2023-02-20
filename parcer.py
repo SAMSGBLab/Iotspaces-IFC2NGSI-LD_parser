@@ -7,10 +7,12 @@ import ifcopenshell.util
 import ifcopenshell.util.element
 import json
 import getopt
-
+import numpy as np
 from ifcopenshell.util.selector import Selector
 import ifcopenshell.geom
 import shapely.geometry as shape_geo
+from shapely.geometry import Polygon
+from shapely.geometry import MultiPolygon
 from shapely.ops import unary_union
 import sys
 import ifcopenshell.util.placement
@@ -380,9 +382,13 @@ def main(argv):
             # Compute convex hull
             #hull = ConvexHull(verts_2d)
 
-            verts_2d = list(set(tuple(x) for x in verts_2d))
-            verts_2d = [list(x) for x in verts_2d]
-            
+            #verts_2d = list(set(tuple(x) for x in verts_2d))
+            #verts_2d = [list(x) for x in verts_2d]
+            unique_verts = []
+            for vert in verts_2d:
+                if vert not in unique_verts:
+                    unique_verts.append(vert)
+            verts_2d=unique_verts        
             
             # Get vertices of convex hull
             #print(hull.vertices)
@@ -392,7 +398,11 @@ def main(argv):
             
             # Get the number of vertices in the convex hull
             #num_vertices = len(hull.vertices)
-            num_vertices = verts_2d
+
+            #let me check
+           
+            # Project vertices onto 2D plane
+            num_vertices = len(verts_2d)
 
             # Set the type variable based on the number of vertices
             if num_vertices == 1:
@@ -406,6 +416,8 @@ def main(argv):
 
             #print(verts_2d)    
             #print(hull_verts)
+
+
             create_ngsi_ld_attribute(room_dictionary,"relativePosition",{"type": typedim,"measurementUnit": "m",
                 "Dimensions": "2D","coordinates":verts_2d},"Property")
 
