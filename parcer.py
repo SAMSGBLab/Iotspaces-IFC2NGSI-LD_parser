@@ -378,14 +378,21 @@ def main(argv):
             verts_2d=[[verts[i], verts[i + 1]] for i in range(0, len(verts), 3)]
             #print(verts_2d)
             # Compute convex hull
-            hull = ConvexHull(verts_2d)
+            #hull = ConvexHull(verts_2d)
 
+            verts_2d = list(set(tuple(x) for x in verts_2d))
+            verts_2d = [list(x) for x in verts_2d]
+            
+            
             # Get vertices of convex hull
             #print(hull.vertices)
-            hull_verts = [verts_2d[i] for i in hull.vertices]
+            
+            #hull_verts = [verts_2d[i] for i in hull.vertices]
             #print(hull_verts)
+            
             # Get the number of vertices in the convex hull
-            num_vertices = len(hull.vertices)
+            #num_vertices = len(hull.vertices)
+            num_vertices = verts_2d
 
             # Set the type variable based on the number of vertices
             if num_vertices == 1:
@@ -394,9 +401,13 @@ def main(argv):
                 typedim = "LineString"
             else:
                 typedim = "Polygon"
+                #hull_verts.append(hull_verts[0])
+                verts_2d.append(verts_2d[0])
 
+            #print(verts_2d)    
+            #print(hull_verts)
             create_ngsi_ld_attribute(room_dictionary,"relativePosition",{"type": typedim,"measurementUnit": "m",
-                "Dimensions": "2D","coordinates":hull_verts},"Property")
+                "Dimensions": "2D","coordinates":verts_2d},"Property")
 
         num_of_doors=0
         num_of_windows=0
@@ -592,6 +603,7 @@ def main(argv):
                 typedim = "LineString"
             else:
                 typedim = "Polygon"
+                hull_verts.append(hull_verts[0])
 
             create_ngsi_ld_attribute(door_dictionary,"relativePosition",{"type": typedim,"measurementUnit": "m",
                 "Dimensions": "2D","coordinates":hull_verts},"Property")
@@ -640,7 +652,8 @@ def main(argv):
                 typedim = "LineString"
             else:
                 typedim = "Polygon"
-
+                hull_verts.append(hull_verts[0])
+            #print(hull_verts)    
             create_ngsi_ld_attribute(Window_dictionary,"relativePosition",{"type": typedim,"measurementUnit": "m",
                 "Dimensions": "2D","coordinates":hull_verts},"Property")
 
@@ -717,6 +730,7 @@ def main(argv):
                     typedim = "LineString"
                 else:
                     typedim = "Polygon"
+                    hull_verts.append(hull_verts[0])
 
                 create_ngsi_ld_attribute(Stair_dictionary,"relativePosition",{"type": typedim,"measurementUnit": "m",
                     "Dimensions": "2D","coordinates":hull_verts},"Property")
@@ -751,6 +765,7 @@ def main(argv):
                     typedim = "LineString"
                 else:
                     typedim = "Polygon"
+                    hull_verts.append(hull_verts[0])
 
                 create_ngsi_ld_attribute(Stair_dictionary,"relativePosition",{"type": typedim,"measurementUnit": "m",
                     "Dimensions": "2D","coordinates":hull_verts},"Property")
