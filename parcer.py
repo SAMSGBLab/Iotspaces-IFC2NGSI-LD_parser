@@ -81,7 +81,11 @@ def create_ngsi_ld_attribute(Dictionary,Key,Value,Attribute_type):
 
 #usage message
 def usage():
-    print("Usage message here! TBA")
+    print("""`-f` or `--file`: Specifies the name of the input .ifc file to use/convert.
+`-t` or `--test`: Enables internal testing parameters.
+`-h` or `--help`: Displays the usage message.
+`-d` or `--2D`: Changes the result from 3D to 2D. Note that this option has some issues, so the default 3D is preferred.""")
+
 
 
 #MAIN STARTS HERE
@@ -101,7 +105,7 @@ def main(argv):
             usage()
             sys.exit()
         elif opt in ("-f", "-file"):
-            print("I enter here?")
+            #print("I enter here?")
             filename = arg
         elif opt in ("-t", "-test"):
             test=True
@@ -210,7 +214,7 @@ def main(argv):
 
     # the result is a JSON string:
     #print(building_json)
-    print("Building entitiy Parsed...")
+    print("Building entity Parsed...")
     ##############################BUILDING DONE#####################################################################################################
     ##############################FLOORS START######################################################################################################
     floors_dics=[]
