@@ -2,12 +2,21 @@
 
 parcer.py is a program that generates NGSI-LD instances of buildings (floors, rooms, windows, doors) from an .ifc file using the IfcOpenShell and Shapely libraries.
 
+
+## Docker image
+
+There is a provided docker image template, you can generate it for usage with the following command
+
+```
+docker build -t ifc2ngsildparser .
+```
+
 ## Installation
 
 To install the dependencies required to run this program, use the following command:
 
 ```
-pip install lark ifcopenshell shapely
+pip install -r requirements.txt
 ```
 
 

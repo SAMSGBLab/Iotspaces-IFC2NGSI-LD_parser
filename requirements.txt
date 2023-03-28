@@ -1,0 +1,6 @@
+ifcopenshell
+numpy
+shapely
+scipy
+trimesh
+lark
