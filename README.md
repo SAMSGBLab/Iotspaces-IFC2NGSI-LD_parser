@@ -7,7 +7,7 @@ parcer.py is a program that generates NGSI-LD instances of buildings (floors, ro
 To install the dependencies required to run this program, use the following command:
 
 ```
-pip install lark python-ifcopenshell shapely
+pip install lark ifcopenshell shapely
 ```
 
 
