@@ -33,8 +33,11 @@ settings.set(settings.USE_WORLD_COORDS, True)
 #settings_2d = ifcopenshell.geom.settings()
 #settings_2d.set(settings.USE_PYTHON_OPENCASCADE, True)
 
+def aabb_intersect(aabb1, aabb2):
+    return np.all(np.less(aabb1[0], aabb2[1])) and np.all(np.less(aabb2[0], aabb1[1]))
 
-
+def expand_aabb(aabb, tolerance):
+    return [aabb[0] - tolerance, aabb[1] + tolerance]
 
 #code to find rooms of floor from https://stackoverflow.com/questions/66906506/finding-children-of-ifcbuildingstorey-using-ifcopenshell
 #can be also done by finding proper relationship traversals through the  ifc schema
@@ -127,11 +130,15 @@ def main(argv):
     
     filename=filename.rsplit( ".", 1 )[ 0 ]
 
-    if test==TRUE:
-
+    if test==True:
+        testing_boundary="testing_enabled"
+        print("Testing Geometrical Solution for missing relationships enabled!")
+    else:
+        testing_boundary="testing_disabled"
+        print("Testing Geometrical Solution for missing relationships disabled!")
        
 
-       sys.exit()
+    #   sys.exit()
     
     print("File Accepted")
     print("----------------")
@@ -434,80 +441,85 @@ def main(argv):
         #find doors and windows
         inverse_of_room=ifc.get_inverse(room)
         found_boundary=0
-        #found_boundary="testing_enabled"
-        if(found_boundary!="testing_enabled"):
-            for rels in inverse_of_room:
-                if(rels.is_a("IFcRelSpaceBoundary")):
-                    found_boundary=1
-                    try:
-                        if rels.get_info()['RelatedBuildingElement'].is_a("IfcDoor"):
-                            num_of_doors+=1
-                            doors_of_room.append("urn:ngsi-ld:Door:Test:SmartCitiesdomain:SmartBuildings:" + rels.get_info()['RelatedBuildingElement'].GlobalId)
-                        elif rels.get_info()['RelatedBuildingElement'].is_a("IfcWindow"):
-                            num_of_windows+=1
-                            windows_of_room.append("urn:ngsi-ld:Window:Test:SmartCitiesdomain:SmartBuildings:" + rels.get_info()['RelatedBuildingElement'].GlobalId) 
-                    except:
-                        continue       
         
         
+        for rels in inverse_of_room:
+            if(rels.is_a("IFcRelSpaceBoundary")):
+                found_boundary=1
+                try:
+                    if rels.get_info()['RelatedBuildingElement'].is_a("IfcDoor"):
+                        num_of_doors+=1
+                        doors_of_room.append("urn:ngsi-ld:Door:Test:SmartCitiesdomain:SmartBuildings:" + rels.get_info()['RelatedBuildingElement'].GlobalId)
+                    elif rels.get_info()['RelatedBuildingElement'].is_a("IfcWindow"):
+                        num_of_windows+=1
+                        windows_of_room.append("urn:ngsi-ld:Window:Test:SmartCitiesdomain:SmartBuildings:" + rels.get_info()['RelatedBuildingElement'].GlobalId) 
+                except:
+                    continue       
+        
+       
         #if no relationships for room present in file, try to find using geometrical calculations
-        if (found_boundary==0 and found_boundary=="testing_enabled"):
-            try:
-                trimeshes_of_floor_objects= objects_of_floor[room.Decomposes[0][4][0]]
-                object_ids= Objects_of_floor_id[room.Decomposes[0][4][0]]
-                count=0
-                for object_mesh in trimeshes_of_floor_objects:
-                    touching=trimesh.boolean.intersection([trimesh_of_room,object_mesh],"blender")
-                    #print(touching)
-                    #print("locally cached object")
-                    if (touching.is_empty == False):
-                        type=ifc.by_id(object_ids[count]).get_info()[1]
+        if (found_boundary==0 and testing_boundary=="testing_enabled"):
+            #I really have no memory of what I did here
+            print("No relationships found for room, trying geometrical solution")
+            print("Testing Boundaries...")
+            
 
-                        if(type=="IfcDoor"):
-                            print("Door found")
-                        #lookthismoreclosely
-                        #check type of object and append accordingly
-                            doors_of_room.append("urn:ngsi-ld:Door:Test:SmartCitiesdomain:SmartBuildings:"+ object_ids[count])
-                        elif(type=="IfcWindow"):
-                            print("Window found")
-                        #lookthismoreclosely
-                        #check type of object and append accordingly
-                            windows_of_room.append("urn:ngsi-ld:Door:Test:SmartCitiesdomain:SmartBuildings:"+ object_ids[count])    
-                        else:
-                            print("WARNING MAJOR ERROR IN LOGIC, DOOR or WINDOW EXPECTED BUT NOT FOUND")    
-                    count=count+1        
-            except:
+            objects = selector.parse(ifc, '@ #'+ room.Decomposes[0][4][0]+ ' & (.IfcDoor | .ifcWindow) ')   
+            
+            #print(objects)
 
-                objects = selector.parse(ifc, '@ #'+ room.Decomposes[0][4][0]+ ' & (.IfcDoor | .ifcWindow) ')   
-                #print(objects)
-                for object in objects:
-                    #if object in room, add to objects
-                    shape2=(ifcopenshell.geom.create_shape(settings, object))    
-                    verts2=shape2.geometry.verts
-                    faces2=shape2.geometry.faces
-                    grouped_verts2 = [[verts2[i], verts2[i + 1], verts2[i + 2]] for i in range(0, len(verts2), 3)]
-                    grouped_faces2 = [[faces2[i], faces2[i + 1], faces2[i + 2]] for i in range(0, len(faces2), 3)] 
+            
+            for object in objects:
+                #if object in room, add to objects
+                shape2=(ifcopenshell.geom.create_shape(settings, object))    
+                verts2=shape2.geometry.verts
+                faces2=shape2.geometry.faces
+                grouped_verts2 = [[verts2[i], verts2[i + 1], verts2[i + 2]] for i in range(0, len(verts2), 3)]
+                grouped_faces2 = [[faces2[i], faces2[i + 1], faces2[i + 2]] for i in range(0, len(faces2), 3)] 
 
-                    trimesh_of_object=trimesh.base.Trimesh(vertices=grouped_verts2,faces=grouped_faces2) 
-                    trimeshes_of_floor_objects.setdefault(room.Decomposes[0][4][0],[]).append(trimesh_of_object)
-                    Objects_of_floor_id.setdefault(room.Decomposes[0][4][0],[]).append(object.GlobalId)
-                    touching=trimesh.boolean.intersection([trimesh_of_room,trimesh_of_object],"blender")
-                    print(touching)
-                    if (touching.is_empty == False):
-                        type=object.get_info()[1]
+                #print(object)
+                #trimesh_of_object=trimesh.base.Trimesh(vertices=grouped_verts2,faces=grouped_faces2) 
+                #trimeshes_of_floor_objects.setdefault(room.Decomposes[0][4][0],[]).append(trimesh_of_object)
+                #bjects_of_floor_id.setdefault(room.Decomposes[0][4][0],[]).append(object.GlobalId)
+                #touching=trimesh.boolean.intersection([trimesh_of_room,trimesh_of_object],"blender")
 
-                        if(type=="IfcDoor"):
-                            print("Door found")
-                        #lookthismoreclosely
-                        #check type of object and append accordingly
-                            doors_of_room.append("urn:ngsi-ld:Door:Test:SmartCitiesdomain:SmartBuildings:"+ object_ids[count])
-                        elif(type=="IfcWindow"):
-                            print("Window found")
-                        #lookthismoreclosely
-                        #check type of object and append accordingly
-                            windows_of_room.append("urn:ngsi-ld:Door:Test:SmartCitiesdomain:SmartBuildings:"+ object_ids[count])    
-                        else:
-                            print("WARNING MAJOR ERROR IN LOGIC, DOOR or WINDOW EXPECTED BUT NOT FOUND")
+                # Create trimesh objects
+                trimesh_of_object = trimesh.base.Trimesh(vertices=grouped_verts2, faces=grouped_faces2)
+                trimesh_of_room_aabb = trimesh_of_room.bounds
+                trimesh_of_object_aabb = trimesh_of_object.bounds
+
+                # Define the tolerance value (e.g., 0.1 meters)
+                tolerance = 0.3
+                trimesh_of_room_aabb_expanded = expand_aabb(trimesh_of_room_aabb, tolerance)
+
+                # Check if bounding boxes intersect
+                bb_intersection = aabb_intersect(trimesh_of_room_aabb_expanded, trimesh_of_object_aabb)
+
+                # If the bounding boxes intersect, perform the actual mesh intersection test
+                if bb_intersection:
+                    touching = True
+                else:
+                    touching = False
+                
+                if (touching != False ):
+                    
+
+                    if(object.is_a('IfcDoor')):
+                        print("Door found")
+                    #lookthismoreclosely
+                    #check type of object and append accordingly
+                        doors_of_room.append("urn:ngsi-ld:Door:Test:SmartCitiesdomain:SmartBuildings:"+ object.GlobalId)
+                        num_of_doors+=1
+                    elif(object.is_a("IfcWindow")):
+                        print("Window found")
+                    #lookthismoreclosely
+                    #check type of object and append accordingly
+                        windows_of_room.append("urn:ngsi-ld:Door:Test:SmartCitiesdomain:SmartBuildings:"+ object.GlobalId)   
+                        num_of_windows+=1 
+                    else:
+                        print("WARNING MAJOR ERROR IN LOGIC, DOOR or WINDOW EXPECTED BUT NOT FOUND")
+        
+        
         #stairs in room, get stairs of floor first
 
         #if already found stairs of the floor the area is in
@@ -690,7 +702,7 @@ def main(argv):
     Stair_dics=[]
     Stairs = ifc.by_type('IfcStair')
     
-    print(Stairs)
+    #print(Stairs)
     for Stair in Stairs:
         Stair_dictionary={"id":"urn:ngsi-ld:Stair:Test:SmartCitiesdomain:SmartBuildings:" + str(Stair.GlobalId),"type":"Stair"}
 
@@ -705,20 +717,20 @@ def main(argv):
                     shape2=(ifcopenshell.geom.create_shape(settings, stair_element))
 
                     verts3=(shape2.geometry.verts)
-                    print(len(verts3))
+                    #print(len(verts3))
                     #previous_face_len=len(faces3)
                     if faces3!=[]:
                         maxi=max(faces3)
 
                     faces3=(shape2.geometry.faces)
                     faces3 = [x + maxi for x in faces3]
-                    print(faces3)
+                    #print(faces3)
                     verts2.extend(verts3)
                     faces2.extend(faces3)
                     
                 #print(verts2)
                 #print(Stair)
-                print(len(verts2))
+                #print(len(verts2))
                 
             grouped_verts = ([[verts2[i], verts2[i + 1], verts2[i + 2]] for i in range(0, len(verts2), 3)])
             grouped_faces = ([[faces2[i], faces2[i + 1], faces2[i + 2]] for i in range(0, len(faces2), 3)])
